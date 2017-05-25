@@ -1,0 +1,24 @@
+{
+  "name": "loklak_scraper_js",
+  "version": "1.0.0",
+  "description": "Scrapers for loklak in JavaScript",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fossasia/loklak_scraper_js.git"
+  },
+  "author": "Fossasia",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/fossasia/loklak_scraper_js/issues"
+  },
+  "homepage": "https://github.com/fossasia/loklak_scraper_js#readme",
+  "dependencies": {
+    "cheerio": "^0.22.0",
+    "request": "^2.81.0"
+  }
+}
+

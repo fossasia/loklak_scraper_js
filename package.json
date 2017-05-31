@@ -10,6 +10,11 @@
     "type": "git",
     "url": "git+https://github.com/fossasia/loklak_scraper_js.git"
   },
+  "keywords": [
+    "Loklak",
+    "Scrapper",
+    "Javascript"
+  ],
   "author": "Fossasia",
   "license": "ISC",
   "bugs": {
@@ -17,8 +22,9 @@
   },
   "homepage": "https://github.com/fossasia/loklak_scraper_js#readme",
   "dependencies": {
-    "cheerio": "^0.22.0",
-    "request": "^2.81.0"
+    "cheerio": "^1.0.0-rc.1",
+    "request": "^2.81.0",
+    "request-promise": "^4.2.1",
+    "request-promise-native": "^1.0.4"
   }
 }
-

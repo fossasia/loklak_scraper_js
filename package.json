@@ -25,6 +25,7 @@
     "cheerio": "^1.0.0-rc.1",
     "request": "^2.81.0",
     "request-promise": "^4.2.1",
-    "request-promise-native": "^1.0.4"
+    "request-promise-native": "^1.0.4",
+    "sync-request": "^4.0.3"
   }
 }

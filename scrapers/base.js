@@ -152,7 +152,7 @@ class BaseLoklakScrapper {
 
 		request(options)
 			.then((body) => {
-				this.html = body;
+				this.HTML = body;
 				this.$ = cheerio.load(body);
 
 				try {
@@ -175,5 +175,3 @@ class BaseLoklakScrapper {
 }
 
 module.exports = BaseLoklakScrapper;
-
-new BaseLoklakScrapper();

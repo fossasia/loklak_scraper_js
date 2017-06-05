@@ -26,6 +26,8 @@
     "request": "^2.81.0",
     "request-promise": "^4.2.1",
     "request-promise-native": "^1.0.4",
+    "unirest": "^0.5.1"
     "sync-request": "^4.0.3"
+
   }
 }

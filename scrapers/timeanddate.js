@@ -1,63 +1,64 @@
-/* Usage : timeanddate.js London
-           timeanddate.js 
- */
 
-const request = require('request-promise-native');
-const cheerio = require('cheerio');
+const BaseLoklakScrapper = require('./base');
 
+class LocationAndDateScrapper extends BaseLoklakScrapper {
 
-var url;
-var html;
-var $;
-
-if (process.argv.length === 3) {
-  query = process.argv[2];
-  terms = ['all'];
-}
-
-url = "http://www.timeanddate.com/worldclock/results.html?query=" + query;
-
-request(url, function(error, response, body) {
-  if(error) {
-    console.log("Error: " + error);
-    process.exit(-1);
+  constructor() {
+    super('LocationAndDate', 'http://www.timeanddate.com/worldclock/results.html?query=');
   }
-  html = body;
-  scrapeTimeAndDate()
-});
 
+  argumentSanityCheck(args) {
+    super.argumentSanityCheck(args);
 
-function scrapeTimeAndDate() {
-  $ = cheerio.load(html);
-  var loc_list = {};
-  var htmlTime = $("table");
-  var tag, location, time;
-  var locationwisetime = [];
-  var count = 0;
+	if (args.length <= 2) {
+      console.error('Atleast one argument required.');
+      process.exit(-1);
+    }
 
-  $('table').find('tr').each(function (index, element) {
+    return true;
+  }
 
-  tag = $(element).find("td");
-  if( tag.text() != "") {
-    location = tag.text();
-    tag = tag.next();
-    time = tag.text();
-    location = location.replace(time,"");
+  onInit() {
+    this.REQUEST_URL = this.BASE_URL + this.SLICED_PROC_ARGS[0];
+    this.request();
+  }
 
-    loc_list["location"] = location;
-    loc_list["time"] = time;
+  scrape($) {
+    const locationwisetime = [];
+    let loc_list = {};
+    let loc_array = [];
+    let tag, location, time, loc;
+    let htmlTime = $("table").find('tr');
+
+    htmlTime.each(function (index, element) {
+    tag = $(element).find("td");
+    if (tag.text() != "") {
+      loc = {};
+
+      location = tag.text();
+      tag = tag.next();
+      time = tag.text();
+      location = location.replace(time,"");
+
+      loc["location"] = location;
+      loc["time"] = time;
+      loc_array.push(loc);
+    } else {
+      tag = tag.next();
+    }
+
+    });
+
+    loc_list["search"] = loc_array;
+    loc_list["url"] = this.REQUEST_URL;
     locationwisetime.push(loc_list);
-    count++;
-    loc_list = {};
-  } else {
-  tag = tag.next();
-  }
-    
 
-});
-  loc_list["count"] = count;
-  locationwisetime.push(loc_list);
-  console.log(locationwisetime);
+    console.log(locationwisetime);
+    this.JSON = locationwisetime;
+    return this.JSON;
+  }
 }
 
+module.exports = LocationAndDateScrapper;
 
+new LocationAndDateScrapper();

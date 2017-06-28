@@ -37,11 +37,13 @@ class TwitterLoklakScrapper extends BaseLoklakScrapper {
 			tweetDetail.user.name = $(element).attr("data-name");
 			tweetDetail.user.screen_name = $(element).attr("data-screen-name");
 
-			// status_url, time-name, time_in_millis
+			// status_url, time-name, time_in_millis, screen_name
 			tweetDetail.link = $(element).find("a.tweet-timestamp").attr("href");
 			tweetDetail.link = "https://twitter.com" + tweetDetail.link;
-			tweetDetail.created_at = $(element).find("a.tweet-timestamp").attr("title");
 			tweetDetail.timestamp = $(element).find("span._timestamp").attr("data-time-ms");
+			tweetDetail.timestamp = parseInt(tweetDetail.timestamp);
+			tweetDetail.created_at = tweetDetail.timestamp;
+			tweetDetail.screen_name = tweetDetail.user.screen_name;
 
 			// tweet_text
 			tweetDetail.text = $(element).find("p.tweet-text").text();

@@ -1,4 +1,7 @@
-var request = require('sync-request');
+const BaseLoklakScraper = require('./base');
+
+const request = require('request-promise-native');
+const Rx = require('rxjs/Rx');
 
 const USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " + 
     "(KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36";
@@ -8,98 +11,131 @@ const REQUEST_HEADER = {
 const ENCODING = "UTF-8";
 const GITHUB_USERS_URL = "https://api.github.com/search/users";
 
-function searchGithubProfiles(query) {
-    var requestUrl = GITHUB_USERS_URL + "?q=" + query;
-    var res = request("GET", requestUrl, REQUEST_HEADER);
-    return JSON.parse(res.body.toString(ENCODING));
-}
+class GithubProfileScraper extends BaseLoklakScraper {
 
-function getExtraUserInfo(requestUrl) {
-    var res = request("GET", requestUrl, REQUEST_HEADER);
-    return JSON.parse(res.body.toString(ENCODING));
-}
-
-function createUserData(searchUserData) {
-    var dataItem = {
-        user_name: searchUserData.login,
-        user_id: searchUserData.id,
-        avatar_url: searchUserData.avatar_url,
-        atom_feed_link: searchUserData.html_url + ".atom"
-    };
-
-    // user's followers
-    var followersData = getExtraUserInfo(searchUserData.followers_url);
-    dataItem.followers = followersData.length;
-    dataItem.followers_data = followersData;
-
-    // user following
-    var userFollowingUrl = searchUserData.following_url.split("{")[0];
-    var followingData = getExtraUserInfo(userFollowingUrl);
-    dataItem.following = followingData.length;
-    dataItem.following_data = followingData;
-
-    // starred
-    var starredUrl = searchUserData.starred_url.split("{")[0];
-    var starredData = getExtraUserInfo(starredUrl);
-    dataItem.starred = starredData.length;
-    dataItem.starred_data = starredData;
-
-    // gists
-    var gistsUrl = searchUserData.gists_url.split("{")[0];
-    dataItem.gists = getExtraUserInfo(gistsUrl);
-
-    // subscriptions
-    var subscriptionsData = getExtraUserInfo(searchUserData.subscriptions_url);
-    dataItem.subscriptions = subscriptionsData;
-
-    // events
-    var eventsData = getExtraUserInfo(searchUserData.events_url.split("{")[0]);
-    dataItem.events = eventsData;
-
-    // received-events
-    var receivedEventsData = getExtraUserInfo(
-        searchUserData.received_events_url);
-    dataItem.received_events = receivedEventsData;
-
-    // organizations
-    dataItem.organizations = getExtraUserInfo(
-        searchUserData.organizations_url);
-
-    // joining_date, bio, full_name, gravatar_id, home_location, works_for,
-    // email, special_link (blog)
-    var userData = getExtraUserInfo(searchUserData.url);
-    dataItem.joining_date = userData.created_at.split("T")[0];
-    dataItem.bio = userData.bio;
-    dataItem.full_name = userData.name;
-    dataItem.gravatar_id = userData.gravatar_id;
-    dataItem.home_location = userData.location;
-    dataItem.works_for = userData.company;
-    if (userData.email) {
-        dataItem.email = userData.email;
-    } else {
-        dataItem.email = "";
+    constructor() {
+        super('Github', 'https://github.com');
     }
-    dataItem.special_link = userData.blog;
-    return dataItem;
+
+    argumentSanityCheck(args) {
+        super.argumentSanityCheck(args);
+        return true;
+    }
+
+    onInit() {
+
+    }
+
+    /**
+     * Creates promise object for sending GET requests
+     * @param {*string} requestUrl API endpoint url
+     */
+    getRequestPromise(requestUrl) {
+        let options = {
+            uri: requestUrl,
+            headers: {'User-Agent': USER_AGENT},
+            json: true
+        };
+        return request(options);
+    }
+
+    /**
+     * Creates promise object for querrying github profiles
+     * @param {*stirng} query Github profile query
+     */
+    getGithubProfilesPromise(query) {
+        let requestUrl = `${GITHUB_USERS_URL}?q=${query}`;
+        return this.getRequestPromise(requestUrl);
+    }
+
+    scrape($) {
+    
+    }
+
+    /**
+     * Gets Github profile data of an user and passes the data to the callback function.
+     * @param {*string} query Github profile query
+     * @param {*function} callback function to be called after Profile data is fetched
+     */
+    getScrapedData(query, callback) {
+        let profileData = {};
+        let githubProfile = {};
+        
+        Rx.Observable.fromPromise(this.getGithubProfilesPromise(query))
+            .flatMap((t,i) => {
+                githubProfile = t["items"][0];
+                profileData["user_name"] = githubProfile["login"];
+                profileData["user_id"] = githubProfile["id"];
+                profileData["avatar_url"] = githubProfile["avatar_url"];
+                profileData["atom_feed_link"] = githubProfile["html_url"] + ".atom";
+                return Rx.Observable.fromPromise(
+                    this.getRequestPromise(githubProfile["followers_url"]));
+            })
+            .flatMap((t, i) => {
+                profileData["followers"] = t["length"];
+                profileData["followers_data"] = t;
+                let followingUrl = githubProfile["following_url"].split("{")[0];
+                return Rx.Observable.fromPromise(this.getRequestPromise(followingUrl));
+            })
+            .flatMap((t, i) => {
+                profileData["following"] = t.length;
+                profileData["following_data"] = t;
+                let starredUrl = githubProfile["starred_url"].split("{")[0];
+                return Rx.Observable.fromPromise(this.getRequestPromise(starredUrl));
+            })
+            .flatMap((t, i) => {
+                profileData["starred"] = t.length;
+                profileData["starred_data"] = t;
+                let gistsUrl = githubProfile["gists_url"].split("{")[0];
+                return Rx.Observable.fromPromise(this.getRequestPromise(gistsUrl));
+            })
+            .flatMap((t, i) => {
+                profileData["gists"] = t;
+                let subscriptionsUrl = githubProfile["subscriptions_url"];
+                return Rx.Observable.fromPromise(this.getRequestPromise(subscriptionsUrl));
+            })
+            .flatMap((t, i) => {
+                profileData["subscriptions"] = t;
+                let eventsUrl = githubProfile["events_url"].split("{")[0];
+                return Rx.Observable.fromPromise(this.getRequestPromise(eventsUrl));
+            })
+            .flatMap((t, i) => {
+                profileData["events"] = t;
+                let receivedEventsUrl = githubProfile["received_events_url"];
+                return Rx.Observable.fromPromise(this.getRequestPromise(receivedEventsUrl));
+            })
+            .flatMap((t, i) => {
+                profileData["received_events"] = t;
+                let organizationsUrl = githubProfile["organizations_url"];
+                return Rx.Observable.fromPromise(this.getRequestPromise(organizationsUrl));
+            })
+            .flatMap((t, i) => {
+                profileData["organizations"] = t;
+                let userDataUrl = githubProfile["url"];
+                return Rx.Observable.fromPromise(this.getRequestPromise(userDataUrl));
+            })
+            .flatMap((t, i) => {
+                profileData["joining_date"] = t["created_at"].split("T")[0];
+                profileData["bio"] = t["bio"];
+                profileData["full_name"] = t["name"];
+                profileData["gravatar_id"] = t["gravatar_id"];
+                profileData["home_location"] = t["location"];
+                profileData["works_for"] = t["company"];
+                let email = t["email"];
+                profileData["email"] = "";
+                if (email) profileData["email"] = email;
+                profileData["special_link"] = t["blog"];
+                return Rx.Observable.of(profileData);
+            })
+            .subscribe(
+                profile => callback(profile),
+                error => callback(error)
+            );
+    }
 }
 
-function getGithubProfiles(query) {
-    var searchData = searchGithubProfiles(query).items;
-    var searchResults = [];
+module.exports = GithubProfileScraper;
 
-    // API rate-limiting issue
-    // for (var i=0; i < searchData.length; i++) {
-    //     searchResults.push(createUserData(searchData[i]));
-    // }
-    searchResults.push(createUserData(searchData[0]));
-
-    var finalData = {};
-    finalData.metadata = {counter: searchResults.length};
-    finalData.data = searchResults;
-    return JSON.stringify(finalData);
-}
-
-// uncomment for testing
-// const QUERY_PARAM = process.argv[2];
-// var profiles = getGithubProfiles(QUERY_PARAM);
-// console.log(profiles);
+// Use of GithubProfileScraper
+// let github = new GithubProfileScraper();
+// github.getScrapedData("Siddhant", data => console.log(JSON.stringify(data)));

@@ -1,83 +1,104 @@
-var request = require("request");
-var cheerio = require("cheerio");
+const BaseLoklakScraper = require('./base');
 
-var profile = null;
-var FLICKR_URL_PROFILE_BASE = "https://www.flickr.com/people/";
-var FLICKR_URL_PHOTOS_BASE = "https://www.flickr.com/photos/";
-var html = "";
-var flickr_profile = {};
-var $ = null;
+const cheerio = require('cheerio');
+const request = require('request-promise-native');
+const Rx = require('rxjs/Rx');
 
-if (process.argv.length <= 2) {
-  console.log("Atleast one argument required");
-  process.exit(-1);
-}
+const USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " +
+    "(KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36";
 
-if (process.argv.length === 3) {
-  profile = process.argv[2];
-}
+class FlickrScraper extends BaseLoklakScraper {
 
-//Function for scraping flickr profile
-function scrapeflickrprofile() {
-  $ = cheerio.load(html);
-
-  var name = $(".given-name").text() + ' ' + $(".family-name").text();
-  flickr_profile["name"] = name;
-
-  var bio = $(".note").text();
-  flickr_profile["bio"] = bio;
-
-  var photos_count = $('.statcount').find('h1').text()
-  flickr_profile["photos_count"] = photos_count;
-
-  flickr_profile["profile_url"] = FLICKR_URL_PROFILE_BASE + profile;
-
-}
-
-
-//Function for scraping photos 
-function scrapflickrphotos() {
-  $ = cheerio.load(html);
-
-  flickr_profile["photos_url"] = FLICKR_URL_PHOTOS_BASE + profile;
-  var followers_count = $('.followers').text().split('•');
-  flickr_profile["followers"] = followers_count[0].replace(' Followers','');
-  flickr_profile["following"] = followers_count[1].replace(' Following','');
-
-  var photos_url = [];
-  var photos_grid = $(".photo-list-photo-view");
-  for(var i=0;i<photos_grid.length;i++) {
-    photos_url[i] = photos_grid[i];
-    var style = photos_url[i].attribs.style;
-    var n = style.lastIndexOf(';');
-    var result = style.substring(n + 1);
-    photos_url[i] = result.replace('background-image: ','')
-      .replace('url(','').replace(')','')
-      .replace(/\"/gi, "").replace(/\/\//,"");
-  }
-  flickr_profile["photos"] = photos_url;
-
-}
-
-request(FLICKR_URL_PROFILE_BASE + profile, function(error, response, body) {
-  if(error) {
-    console.log("Error: " + error);
-    process.exit(-1);
-  }
-  else if(!error && response.statusCode == 200) {
-    html = body;
-    scrapeflickrprofile();
-  }
-
-  request(FLICKR_URL_PHOTOS_BASE + profile, function(error, response, body) {
-    if(error) {
-      console.log("Error: " + error);
-      process.exit(-1);
+    constructor() {
+        super('Flickr', 'https://www.flickr.com');
     }
-    else if(!error && response.statusCode == 200) {
-      html = body;
-      scrapflickrphotos();
+
+    argumentSanityCheck(args) {
+        return super.argumentSanityCheck(args);
     }
-    console.log(flickr_profile);
-  });
-});
+
+    onInit() {
+
+    }
+
+    scrape($) {
+
+    }
+
+    //Function for scraping flickr profile
+    scrapeflickrprofile(html, profile, flickr_profile) {
+        let $ = cheerio.load(html);
+
+        var name = $(".given-name").text() + ' ' + $(".family-name").text();
+        flickr_profile["name"] = name;
+
+        var bio = $(".note").text();
+        flickr_profile["bio"] = bio;
+
+        var photos_count = $('.statcount').find('h1').text()
+        flickr_profile["photos_count"] = photos_count;
+
+        flickr_profile["profile_url"] = this.BASE_URL + "/people/" + profile;
+    }
+
+
+    //Function for scraping photos
+    scrapeflickrphotos(html, profile, flickr_profile) {
+        let $ = cheerio.load(html);
+
+        flickr_profile["photos_url"] = this.BASE_URL + "/photos/" + profile;
+        var followers_count = $('.followers').text().split('•');
+        flickr_profile["followers"] = followers_count[0].replace(' Followers','');
+        flickr_profile["following"] = followers_count[1].replace(' Following','');
+
+        var photos_url = [];
+        var photos_grid = $(".photo-list-photo-view");
+        for(var i=0;i<photos_grid.length;i++) {
+            photos_url[i] = photos_grid[i];
+            var style = photos_url[i].attribs.style;
+            var n = style.lastIndexOf(';');
+            var result = style.substring(n + 1);
+            photos_url[i] = result.replace('background-image: ','')
+                .replace('url(','').replace(')','')
+                .replace(/\"/gi, "").replace(/\/\//,"");
+        }
+        flickr_profile["photos"] = photos_url;
+    }
+
+    /**
+     * Creates promise object for sending GET requests
+     * @param {*string} requestUrl API endpoint url
+     */
+    getRequestPromise(requestUrl) {
+        let options = {
+            uri: requestUrl,
+            headers: {'User-Agent': USER_AGENT}
+        };
+        return request(options);
+    }
+
+    getScrapedData(profile, callback) {
+        let flickr_profile = {}
+
+        Rx.Observable.fromPromise(this.getRequestPromise(this.BASE_URL + "/people/" + profile))
+            .flatMap((t, i) => {
+                this.scrapeflickrprofile(t, profile, flickr_profile);
+                return Rx.Observable.fromPromise(
+                    this.getRequestPromise(this.BASE_URL + "/photos/" + profile));
+            })
+            .flatMap((t, i) => {
+                this.scrapeflickrphotos(t, profile, flickr_profile);
+                return Rx.Observable.of(flickr_profile);
+            })
+            .subscribe(
+                profile => callback(profile),
+                error => callback(error)
+            );
+    }
+}
+
+module.exports = FlickrScraper;
+
+//Uncomment the following lines to test the scraper
+//let flickr = new FlickrScraper();
+//flickr.getScrapedData("achintthomas", profile => console.log(profile));

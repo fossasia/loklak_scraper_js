@@ -137,5 +137,5 @@ class GithubProfileScraper extends BaseLoklakScraper {
 module.exports = GithubProfileScraper;
 
 // Use of GithubProfileScraper
-// let github = new GithubProfileScraper();
-// github.getScrapedData("Siddhant", data => console.log(JSON.stringify(data)));
+//let github = new GithubProfileScraper();
+//github.getScrapedData("Siddhant", data => console.log(JSON.stringify(data)));

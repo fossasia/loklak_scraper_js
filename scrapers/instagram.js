@@ -5,19 +5,16 @@ const BaseLoklakScrapper = require('./base');
 
 var profile = null;
 
-class instagramScrapper extends BaseLoklakScrapper
-{
-	constructor()
-	{
+class instagramScrapper extends BaseLoklakScrapper {
+	
+	constructor() {
 		super('Instagram','http://www.instagram.com/');
 	}
 
-	argumentSanityCheck(args) 
-	{
+	argumentSanityCheck(args) {
 		super.argumentSanityCheck(args);
 
-		if (args.length <= 2) 
-		{
+		if (args.length <= 2) {
 			console.error('Atleast one argument required.');
 			process.exit(-1);
 		}
@@ -30,30 +27,21 @@ class instagramScrapper extends BaseLoklakScrapper
 		this.request();
 	}
 
-	scrape($)
-	{
+	scrape($) {
 		profile=this.REQUEST_URL;
 		var instaBody=this.HTML;
 		var pos1=instaBody.indexOf("window._sharedData = ");
 		var pos2=instaBody.indexOf("</script>",pos1);
 		var finalContent=instaBody.slice(pos1+21,pos2-1);
 		var jsonParsedContent=JSON.parse(finalContent); 
-		this.JSON=jsonParsedContent;
-		var keys=Object.keys(jsonParsedContent);
-		//uncomment the line below to display JSON keys
-		//console.log(keys); 
-		//uncomment the function below to display some common details
-		this.display(jsonParsedContent); 
+		var instaData={};
+		instaData["activity_counts"]=jsonParsedContent["activity_counts"];
+		instaData["country_code"]=jsonParsedContent["country_code"];
+		instaData["language_code"]=jsonParsedContent["language_code"];
+		instaData["entry_data"]=jsonParsedContent["entry_data"];
+		instaData["profile_url"]=profile;
+		this.JSON=instaData;
 		return this.JSON;
-	}
-
-	display(jsonParsedContent)
-	{
-		console.log(jsonParsedContent["activity_counts"]);
-		console.log(jsonParsedContent["country_code"]);
-		console.log(jsonParsedContent["language_code"]);
-		var profileDetails=jsonParsedContent["entry_data"]["ProfilePage"];
-		console.log(profileDetails[0]["user"]);
 	}
 }
 

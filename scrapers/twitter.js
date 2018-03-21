@@ -79,9 +79,7 @@ class TwitterLoklakScrapper extends BaseLoklakScrapper {
 			// TODO: video, audio, gifs
 			tweets.push(tweetDetail);
 		});
-		
-		tweets.splice(-1, 1); // all data is not available for the last tweet
-		
+
 		this.JSON = {};
 		this.JSON.statuses = tweets;
 		return tweets;
